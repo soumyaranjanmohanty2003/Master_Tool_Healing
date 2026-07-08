@@ -47,19 +47,27 @@ def heal_one(
             diagnosis = llm_client.diagnose(failure, context, list(result.attempts))
         except DiagnosisError as exc:
             result.summary = f"LLM diagnosis failed: {exc}"
+            log.info("Attempt %d: %s", attempt_num, result.summary)
             break
+
+        log.info(
+            "Attempt %d: diagnosis fix_type=%s confidence=%s root_cause=%s",
+            attempt_num, diagnosis.fix_type.value, diagnosis.confidence.value, diagnosis.root_cause,
+        )
 
         attempt = FixAttempt(attempt_number=attempt_num, diagnosis=diagnosis)
         result.attempts.append(attempt)
 
         if diagnosis.fix_type == FixType.NO_FIX_POSSIBLE or not diagnosis.diff:
             result.summary = f"No fix attempted (attempt {attempt_num}): {diagnosis.root_cause}"
+            log.info("Attempt %d: no diff produced, stopping", attempt_num)
             break
 
         try:
             check_diff_safety(diagnosis.diff, failure.file_path, config.max_changed_lines)
         except UnsafePatchError as exc:
             attempt.error = f"Rejected unsafe patch: {exc}"
+            log.info("Attempt %d: %s", attempt_num, attempt.error)
             continue
 
         try:
@@ -67,6 +75,7 @@ def heal_one(
             attempt.applied = True
         except PatchApplyError as exc:
             attempt.error = str(exc)
+            log.info("Attempt %d: patch failed to apply: %s", attempt_num, exc)
             continue
 
         attempt.rerun = adapter.run_single(failure)
@@ -74,10 +83,15 @@ def heal_one(
         if attempt.rerun.passed:
             result.healed = True
             result.summary = f"Healed on attempt {attempt_num}: {diagnosis.root_cause}"
+            log.info("Attempt %d: rerun passed, test healed", attempt_num)
             if not config.dry_run:
                 result.pr_url = _open_pr(config, failure, attempt)
             return result
 
+        log.info(
+            "Attempt %d: patch applied but rerun still failed: %s",
+            attempt_num, (attempt.rerun.output or "")[:1000],
+        )
         revert_diff(config.repo_root, diagnosis.diff)
 
     if not result.summary:
