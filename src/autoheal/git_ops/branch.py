@@ -13,7 +13,7 @@ class GitOpError(RuntimeError):
 
 
 def _run(args: list[str], cwd: Path) -> str:
-    proc = subprocess.run(args, cwd=cwd, capture_output=True, text=True, check=False)
+    proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)
     if proc.returncode != 0:
         raise GitOpError(f"`git {' '.join(args)}` failed:\n{proc.stderr}")
     return proc.stdout
