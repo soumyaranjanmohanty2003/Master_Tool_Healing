@@ -1,0 +1,68 @@
+name: 'AutoHeal'
+description: 'Diagnose, fix, verify, and PR failing Playwright test scripts using an LLM.'
+branding:
+  icon: 'activity'
+  color: 'green'
+
+inputs:
+  results-file:
+    description: 'Path to the test results file (Playwright JSON reporter output, or pytest-json-report/JUnit XML), relative to the repo root.'
+    required: true
+  working-directory:
+    description: 'Directory the test suite lives in (repo root if omitted).'
+    required: false
+    default: '.'
+  groq-api-key:
+    description: 'Groq API key used for diagnosis and fix generation.'
+    required: true
+  groq-model:
+    description: 'Groq model name.'
+    required: false
+    default: 'llama-3.3-70b-versatile'
+  github-token:
+    description: 'Token with contents:write and pull-requests:write on this repo.'
+    required: true
+  base-branch:
+    description: 'Branch the fix PR should target.'
+    required: false
+    default: 'main'
+  max-attempts:
+    description: 'Max diagnose/patch/rerun attempts per failing test.'
+    required: false
+    default: '3'
+  dry-run:
+    description: 'If true, diagnose/patch/rerun but never push or open a PR.'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install AutoHeal
+      shell: bash
+      run: pip install "${{ github.action_path }}"
+
+    - name: Run AutoHeal
+      shell: bash
+      env:
+        GROQ_API_KEY: ${{ inputs.groq-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        ARGS=(
+          run
+          --repo-root "${{ inputs.working-directory }}"
+          --results-file "${{ inputs.results-file }}"
+          --groq-model "${{ inputs.groq-model }}"
+          --base-branch "${{ inputs.base-branch }}"
+          --max-attempts "${{ inputs.max-attempts }}"
+        )
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          ARGS+=(--dry-run)
+        fi
+        autoheal "${ARGS[@]}"

@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+node_modules/
+playwright-report/
+test-results/
+autoheal-results.json
+
+.env

@@ -1,0 +1,75 @@
+name: AutoHeal Demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  playwright-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        working-directory: examples/playwright-demo-js
+        run: npm install
+
+      - name: Install browsers
+        working-directory: examples/playwright-demo-js
+        run: npx playwright install --with-deps chromium
+
+      - name: Run tests
+        id: tests
+        working-directory: examples/playwright-demo-js
+        run: npx playwright test --reporter=json > autoheal-results.json
+        continue-on-error: true
+
+      - name: Auto-heal
+        if: steps.tests.outcome == 'failure'
+        uses: ./
+        with:
+          working-directory: examples/playwright-demo-js
+          results-file: examples/playwright-demo-js/autoheal-results.json
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  playwright-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        working-directory: examples/playwright-demo-python
+        run: pip install -r requirements.txt
+
+      - name: Install browsers
+        working-directory: examples/playwright-demo-python
+        run: playwright install --with-deps chromium
+
+      - name: Run tests
+        id: tests
+        working-directory: examples/playwright-demo-python
+        run: pytest --json-report --json-report-file=autoheal-results.json
+        continue-on-error: true
+
+      - name: Auto-heal
+        if: steps.tests.outcome == 'failure'
+        uses: ./
+        with:
+          working-directory: examples/playwright-demo-python
+          results-file: examples/playwright-demo-python/autoheal-results.json
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
