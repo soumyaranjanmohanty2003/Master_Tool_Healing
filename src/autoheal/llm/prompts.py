@@ -32,6 +32,10 @@ Rules you must follow:
   "explanation": "1-3 sentences explaining the fix, for a PR description",
   "fixed_code": "the ENTIRE corrected file content, or null if fix_type is no_fix_possible"
 }
+5. "fixed_code" must be a single valid JSON string: escape every literal newline as \\n
+   and every double quote as \\", on one logical JSON line. Never wrap it in Python
+   triple-quotes (\"\"\") or leave raw, unescaped newlines inside the string - either
+   of those makes the whole response invalid JSON.
 """
 
 

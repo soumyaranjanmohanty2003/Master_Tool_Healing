@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from groq import Groq
+from groq import APIStatusError, Groq
 
 from autoheal.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from autoheal.llm.schema import InvalidLLMResponse, validate_llm_response
@@ -35,15 +35,18 @@ class GroqDiagnosisClient:
     ) -> Diagnosis:
         user_prompt = build_user_prompt(failure, context, previous_attempts)
 
-        response = self._client.chat.completions.create(
-            model=self._model,
-            temperature=self._temperature,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
+        try:
+            response = self._client.chat.completions.create(
+                model=self._model,
+                temperature=self._temperature,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+        except APIStatusError as exc:
+            raise DiagnosisError(f"Groq API request failed: {exc}") from exc
 
         content = response.choices[0].message.content
         try:

@@ -1,7 +1,9 @@
 import json
 from types import SimpleNamespace
 
+import httpx
 import pytest
+from groq import APIStatusError
 
 from autoheal.llm.groq_client import DiagnosisError, GroqDiagnosisClient
 from autoheal.models import Confidence, FailureReport, FixType, SourceContext
@@ -88,6 +90,26 @@ def test_diagnose_raises_on_invalid_json(monkeypatch, failure_and_context):
         choices=[SimpleNamespace(message=SimpleNamespace(content="not json"))]
     )
     monkeypatch.setattr(client._client.chat.completions, "create", lambda **kwargs: bad_response)
+
+    with pytest.raises(DiagnosisError):
+        client.diagnose(failure, context)
+
+
+def test_diagnose_raises_on_groq_api_error(monkeypatch, failure_and_context):
+    failure, context = failure_and_context
+    client = GroqDiagnosisClient(api_key="fake-key")
+
+    request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+    response = httpx.Response(400, request=request)
+
+    def _raise(**kwargs):
+        raise APIStatusError(
+            "Failed to generate JSON. Please adjust your prompt.",
+            response=response,
+            body=None,
+        )
+
+    monkeypatch.setattr(client._client.chat.completions, "create", _raise)
 
     with pytest.raises(DiagnosisError):
         client.diagnose(failure, context)
