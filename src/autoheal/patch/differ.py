@@ -20,6 +20,17 @@ class PatchApplyError(RuntimeError):
 
 
 def compute_diff(original: str, fixed: str, file_path: str) -> str:
+    # LLM-generated file content often drops the trailing newline. difflib treats
+    # the final line as changed in that case (identical text, differing only in
+    # whether it ends with "\n"), and since we don't emit a "\ No newline at end
+    # of file" marker, the two runs together and corrupts the patch for `git
+    # apply`. Normalize to the original's convention so a missing trailing
+    # newline in the LLM's output never produces a diff by itself.
+    if original.endswith("\n") and not fixed.endswith("\n"):
+        fixed += "\n"
+    elif not original.endswith("\n") and fixed.endswith("\n"):
+        fixed = fixed[:-1]
+
     original_lines = original.splitlines(keepends=True)
     fixed_lines = fixed.splitlines(keepends=True)
     diff = difflib.unified_diff(

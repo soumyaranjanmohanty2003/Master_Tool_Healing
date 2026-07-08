@@ -39,6 +39,17 @@ def test_apply_diff_writes_file_and_revert_restores(git_repo: Path):
     assert (git_repo / "example.spec.ts").read_text(encoding="utf-8") == original
 
 
+def test_compute_diff_ignores_missing_trailing_newline(git_repo: Path):
+    original = (git_repo / "example.spec.ts").read_text(encoding="utf-8")
+    expected = original.replace("Log In", "Sign In")
+    fixed = expected.rstrip("\n")  # drop trailing newline, like an LLM often does
+
+    diff = compute_diff(original, fixed, "example.spec.ts")
+
+    apply_diff(git_repo, diff)
+    assert (git_repo / "example.spec.ts").read_text(encoding="utf-8") == expected
+
+
 def test_apply_diff_raises_on_conflicting_patch(git_repo: Path):
     stale_diff = compute_diff("totally\ndifferent\ncontent\n", "totally\nchanged\ncontent\n", "example.spec.ts")
     with pytest.raises(PatchApplyError):
