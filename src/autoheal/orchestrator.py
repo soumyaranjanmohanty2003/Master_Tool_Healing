@@ -76,6 +76,7 @@ def heal_one(
         except PatchApplyError as exc:
             attempt.error = str(exc)
             log.info("Attempt %d: patch failed to apply: %s", attempt_num, exc)
+            log.info("Attempt %d: diff was:\n%s", attempt_num, diagnosis.diff)
             continue
 
         attempt.rerun = adapter.run_single(failure)
