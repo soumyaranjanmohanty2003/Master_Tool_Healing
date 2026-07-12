@@ -6,17 +6,28 @@ fix, verify the fix by rerunning the failing test, and — if it passes — open
 pull request with the fix. It never touches application/product source, only
 the failing test script itself, and every fix lands as a PR for human review.
 
-Currently supports **Playwright** in both JS/TS and Python (pytest-playwright)
-flavors. Selenium and Maestro YAML support is planned; the adapter interface
-(`autoheal.adapters.base.TestFrameworkAdapter`) is designed to make adding them
-a matter of implementing `parse_results` / `run_single`, not touching the rest
-of the pipeline.
+Supports **Playwright** (JS/TS and Python/pytest-playwright) and **Maestro**
+(mobile UI testing, YAML flows). Selenium support is planned; the adapter
+interface (`autoheal.adapters.base.TestFrameworkAdapter`) is designed to make
+adding it a matter of implementing `parse_results` / `run_single`, not
+touching the rest of the pipeline.
+
+> **Maestro support is unverified end-to-end.** The Playwright adapters were
+> tested against real `playwright test`/`pytest` runs. The Maestro adapter is
+> implemented from Maestro's documented JUnit output conventions, but there's
+> no Maestro CLI or mobile emulator available in the environment this was
+> built in, so it hasn't been run against a real `maestro test` report. See
+> [`examples/maestro-demo/README.md`](examples/maestro-demo/README.md) before
+> relying on it — you may need to adjust field names in
+> `src/autoheal/adapters/maestro_adapter.py` to match your real report.
 
 ## How it works
 
 1. **Detect** - parses your test runner's failure output (Playwright's
-   `--reporter=json`, or pytest-json-report/JUnit XML) into a normalized
-   failure report.
+   `--reporter=json`, pytest-json-report/JUnit XML, or Maestro's JUnit XML)
+   into a normalized failure report. The framework/language is auto-detected
+   from your repo or the results file; pass `--framework` to force one
+   (`playwright-js`, `playwright-python`, or `maestro`).
 2. **Diagnose** - sends the error, stack trace, and the failing test's source
    to Groq, which returns a root cause and (if it's confident) a full corrected
    version of the file.
@@ -49,7 +60,9 @@ of the pipeline.
 
 See [`.github/workflows/demo.yml`](.github/workflows/demo.yml) and
 [`examples/`](examples/) for working end-to-end examples in both JS/TS and
-Python, each with one deliberately brittle test.
+Python, each with one deliberately brittle test. See
+[`examples/maestro-demo/`](examples/maestro-demo/) for the (unverified, see
+above) Maestro wiring.
 
 ## Local usage
 

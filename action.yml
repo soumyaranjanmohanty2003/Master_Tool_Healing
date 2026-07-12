@@ -1,12 +1,16 @@
 name: 'AutoHeal'
-description: 'Diagnose, fix, verify, and PR failing Playwright test scripts using an LLM.'
+description: 'Diagnose, fix, verify, and PR failing Playwright/Maestro test scripts using an LLM.'
 branding:
   icon: 'activity'
   color: 'green'
 
 inputs:
+  framework:
+    description: 'Force a specific adapter instead of auto-detecting: auto, playwright-js, playwright-python, or maestro.'
+    required: false
+    default: 'auto'
   results-file:
-    description: 'Path to the test results file (Playwright JSON reporter output, or pytest-json-report/JUnit XML), relative to the repo root.'
+    description: 'Path to the test results file (Playwright JSON reporter output, pytest-json-report/JUnit XML, or Maestro JUnit XML), relative to the repo root.'
     required: true
   working-directory:
     description: 'Directory the test suite lives in (repo root if omitted).'
@@ -57,6 +61,7 @@ runs:
         ARGS=(
           run
           --repo-root "${{ inputs.working-directory }}"
+          --framework "${{ inputs.framework }}"
           --results-file "${{ inputs.results-file }}"
           --groq-model "${{ inputs.groq-model }}"
           --base-branch "${{ inputs.base-branch }}"

@@ -1,0 +1,8 @@
+appId: com.example.demoapp
+---
+# Deliberately brittle: the app's button is labeled "Sign In", but this flow
+# still looks for the old copy "Log In". AutoHeal should diagnose the stale
+# selector and update it to match the current screen content.
+- launchApp
+- tapOn: "Log In"
+- assertVisible: "Welcome back"

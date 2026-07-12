@@ -16,7 +16,9 @@ DEFAULT_MAX_CHANGED_LINES = 200
 @dataclass
 class AutoHealConfig:
     repo_root: Path = field(default_factory=Path.cwd)
-    framework: str = "playwright"
+    framework: str = "auto"
+    """"auto" to detect Playwright JS/TS vs Python vs Maestro, or an explicit
+    "playwright-js" / "playwright-python" / "maestro" to force one."""
     test_command: str | None = None
     """Command that runs the full suite, if a results file isn't already produced."""
     results_file: str | None = None
