@@ -23,6 +23,20 @@ JUNIT_BY_NAME_ONLY = """<?xml version="1.0" encoding="utf-8"?>
 </testsuites>
 """
 
+# Matches Maestro CLI 2.5.1's real `--format junit` output (confirmed against
+# a real device run): no `message` attribute, no `file`/per-flow classname -
+# the failure text lives in the element body and the file has to be found by
+# matching the testcase `name` against a flow file's stem.
+JUNIT_REAL_DEVICE_FORMAT = """<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="ABC123" tests="1" failures="1" time="23.0">
+    <testcase id="wifi_settings" name="wifi_settings" classname="wifi_settings" time="23.0" status="ERROR">
+      <failure>Element not found: Text matching regex: WiFi</failure>
+    </testcase>
+  </testsuite>
+</testsuites>
+"""
+
 
 def test_parse_results_uses_file_attribute_when_present(tmp_path: Path):
     flows_dir = tmp_path / "flows"
@@ -58,6 +72,25 @@ def test_parse_results_falls_back_to_matching_flow_file_by_name(tmp_path: Path):
 
     assert len(failures) == 1
     assert failures[0].file_path == "flows/login.yaml"
+
+
+def test_parse_results_reads_message_from_element_text_on_real_format(tmp_path: Path):
+    flows_dir = tmp_path / "flows"
+    flows_dir.mkdir()
+    (flows_dir / "wifi_settings.yaml").write_text(
+        "appId: com.android.settings\n---\n- tapOn: WiFi\n", encoding="utf-8"
+    )
+
+    results_file = tmp_path / "results.xml"
+    results_file.write_text(JUNIT_REAL_DEVICE_FORMAT, encoding="utf-8")
+
+    adapter = MaestroAdapter(tmp_path)
+    failures = adapter.parse_results(results_file)
+
+    assert len(failures) == 1
+    failure = failures[0]
+    assert failure.file_path == "flows/wifi_settings.yaml"
+    assert failure.error_message == "Element not found: Text matching regex: WiFi"
 
 
 def test_run_single_invokes_maestro_test(tmp_path: Path, monkeypatch):

@@ -51,6 +51,16 @@ class MaestroAdapter(TestFrameworkAdapter):
             name = testcase.get("name", "")
             file_path = self._resolve_flow_path(testcase, name)
 
+            # Maestro's real JUnit output (as of CLI 2.5.1) puts the failure
+            # detail in the <failure>/<error> element's text content, not a
+            # `message` attribute - unlike the JUnit convention this adapter
+            # was originally written against. Prefer the attribute if a
+            # future Maestro version adds one, but fall back to the text.
+            message_attr = (fault_el.get("message") or "").strip()
+            text_content = (fault_el.text or "").strip()
+            error_message = message_attr or text_content or "Unknown error"
+            stack_trace = text_content if text_content != error_message else ""
+
             failures.append(
                 FailureReport(
                     test_id=file_path or name,
@@ -58,8 +68,8 @@ class MaestroAdapter(TestFrameworkAdapter):
                     file_path=file_path,
                     framework=self.name,
                     language=self.language,
-                    error_message=fault_el.get("message", "") or "Unknown error",
-                    stack_trace=fault_el.text or "",
+                    error_message=error_message,
+                    stack_trace=stack_trace,
                     # Maestro's JUnit report has no per-step line number; the
                     # context collector falls back to the whole flow file,
                     # which is normally short enough not to need one.

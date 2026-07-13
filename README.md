@@ -12,14 +12,14 @@ interface (`autoheal.adapters.base.TestFrameworkAdapter`) is designed to make
 adding it a matter of implementing `parse_results` / `run_single`, not
 touching the rest of the pipeline.
 
-> **Maestro support is unverified end-to-end.** The Playwright adapters were
-> tested against real `playwright test`/`pytest` runs. The Maestro adapter is
-> implemented from Maestro's documented JUnit output conventions, but there's
-> no Maestro CLI or mobile emulator available in the environment this was
-> built in, so it hasn't been run against a real `maestro test` report. See
-> [`examples/maestro-demo/README.md`](examples/maestro-demo/README.md) before
-> relying on it — you may need to adjust field names in
-> `src/autoheal/adapters/maestro_adapter.py` to match your real report.
+> **Maestro support has been verified end-to-end** against a real Android
+> device (detect → diagnose → patch → verify), see
+> [`examples/maestro-real-demo/README.md`](examples/maestro-real-demo/README.md).
+> That run surfaced and fixed a real bug: Maestro's actual JUnit output puts
+> the failure detail in the `<failure>`/`<error>` element's text content, not
+> a `message` attribute, which the adapter now handles. The illustrative
+> [`examples/maestro-demo/`](examples/maestro-demo/) (no device required)
+> still documents the CI wiring shape.
 
 ## How it works
 

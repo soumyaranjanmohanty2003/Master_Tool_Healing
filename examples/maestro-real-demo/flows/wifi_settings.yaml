@@ -1,0 +1,8 @@
+appId: com.android.settings
+---
+# Deliberately brittle: the Settings app's row is labeled "Wi-Fi", but this
+# flow still looks for the old copy "WiFi" (no hyphen). AutoHeal should
+# diagnose the stale selector and update it to match the current screen text.
+- launchApp
+- tapOn: "WiFi"
+- assertVisible: "Wi-Fi Assistant"
