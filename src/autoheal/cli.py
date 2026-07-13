@@ -17,6 +17,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     run = subparsers.add_parser("run", help="Diagnose, fix, verify, and PR failing tests")
     run.add_argument("--repo-root", default=".", help="Path to the repo under test")
+    run.add_argument(
+        "--framework",
+        choices=["auto", "playwright-js", "playwright-python", "maestro"],
+        default=None,
+        help="Force a specific adapter instead of auto-detecting (default: auto)",
+    )
     run.add_argument("--results-file", help="Pre-generated results file (JSON/XML)")
     run.add_argument("--test-command", help="Command to run the full suite if no results file is given")
     run.add_argument("--groq-api-key", help="Overrides GROQ_API_KEY env var")
@@ -41,6 +47,7 @@ def main(argv: list[str] | None = None) -> int:
     config = AutoHealConfig.load(
         overrides={
             "repo_root": Path(args.repo_root).resolve(),
+            "framework": args.framework,
             "results_file": args.results_file,
             "test_command": args.test_command,
             "groq_api_key": args.groq_api_key,

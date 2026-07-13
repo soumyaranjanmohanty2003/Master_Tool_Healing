@@ -1,0 +1,46 @@
+name: AutoHeal Maestro Demo (real device)
+
+# Manual trigger only. This job runs on a self-hosted runner (this machine,
+# with a real Android phone attached over USB) rather than GitHub-hosted
+# runners, which can't reach a physical device. Keeping the trigger to
+# workflow_dispatch only - not push/pull_request - is deliberate: this repo
+# is public, and self-hosted runners on public repos are only safe when
+# nothing outside collaborators-with-write-access can cause a run.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  maestro-real-device:
+    runs-on: [self-hosted, maestro-demo]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wake device and reset app state
+        shell: bash
+        run: |
+          adb shell settings put system screen_off_timeout 1800000
+          adb shell input keyevent KEYCODE_WAKEUP
+          adb shell input keyevent KEYCODE_HOME
+          adb shell am force-stop com.android.settings
+
+      - name: Run Maestro flow
+        id: tests
+        shell: bash
+        working-directory: examples/maestro-real-demo
+        run: maestro test flows/wifi_settings.yaml --format junit --output autoheal-results.xml
+        continue-on-error: true
+
+      - name: Auto-heal
+        if: steps.tests.outcome == 'failure'
+        uses: ./
+        with:
+          framework: maestro
+          working-directory: examples/maestro-real-demo
+          results-file: examples/maestro-real-demo/autoheal-results.xml
+          base-branch: feature/maestro-support
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}

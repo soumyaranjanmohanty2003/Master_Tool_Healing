@@ -6,17 +6,28 @@ fix, verify the fix by rerunning the failing test, and — if it passes — open
 pull request with the fix. It never touches application/product source, only
 the failing test script itself, and every fix lands as a PR for human review.
 
-Currently supports **Playwright** in both JS/TS and Python (pytest-playwright)
-flavors. Selenium and Maestro YAML support is planned; the adapter interface
-(`autoheal.adapters.base.TestFrameworkAdapter`) is designed to make adding them
-a matter of implementing `parse_results` / `run_single`, not touching the rest
-of the pipeline.
+Supports **Playwright** (JS/TS and Python/pytest-playwright) and **Maestro**
+(mobile UI testing, YAML flows). Selenium support is planned; the adapter
+interface (`autoheal.adapters.base.TestFrameworkAdapter`) is designed to make
+adding it a matter of implementing `parse_results` / `run_single`, not
+touching the rest of the pipeline.
+
+> **Maestro support has been verified end-to-end** against a real Android
+> device (detect → diagnose → patch → verify), see
+> [`examples/maestro-real-demo/README.md`](examples/maestro-real-demo/README.md).
+> That run surfaced and fixed a real bug: Maestro's actual JUnit output puts
+> the failure detail in the `<failure>`/`<error>` element's text content, not
+> a `message` attribute, which the adapter now handles. The illustrative
+> [`examples/maestro-demo/`](examples/maestro-demo/) (no device required)
+> still documents the CI wiring shape.
 
 ## How it works
 
 1. **Detect** - parses your test runner's failure output (Playwright's
-   `--reporter=json`, or pytest-json-report/JUnit XML) into a normalized
-   failure report.
+   `--reporter=json`, pytest-json-report/JUnit XML, or Maestro's JUnit XML)
+   into a normalized failure report. The framework/language is auto-detected
+   from your repo or the results file; pass `--framework` to force one
+   (`playwright-js`, `playwright-python`, or `maestro`).
 2. **Diagnose** - sends the error, stack trace, and the failing test's source
    to Groq, which returns a root cause and (if it's confident) a full corrected
    version of the file.
@@ -49,7 +60,9 @@ of the pipeline.
 
 See [`.github/workflows/demo.yml`](.github/workflows/demo.yml) and
 [`examples/`](examples/) for working end-to-end examples in both JS/TS and
-Python, each with one deliberately brittle test.
+Python, each with one deliberately brittle test. See
+[`examples/maestro-demo/`](examples/maestro-demo/) for the (unverified, see
+above) Maestro wiring.
 
 ## Local usage
 

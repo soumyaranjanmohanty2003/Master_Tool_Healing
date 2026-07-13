@@ -20,7 +20,7 @@ log = logging.getLogger("autoheal")
 
 
 def heal(config: AutoHealConfig) -> list[HealResult]:
-    adapter = detect_adapter(config.repo_root, config.results_file)
+    adapter = detect_adapter(config.repo_root, config.results_file, config.framework)
     results_path = Path(config.results_file) if config.results_file else adapter.run_suite()
     failures = adapter.parse_results(results_path)
 
