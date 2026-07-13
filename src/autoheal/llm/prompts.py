@@ -64,6 +64,15 @@ def build_user_prompt(
             )
         parts.append("Consider a different root cause or approach than the attempts above.")
 
+    if failure.framework == "maestro":
+        parts.append(
+            "This is a Maestro flow file. It MUST start with a config header (one or more "
+            "keys like `appId: ...`) followed by a line containing exactly `---`, before the "
+            "list of steps. Keep that header and separator byte-for-byte identical to the "
+            "original unless the config itself is the bug - do not drop it, reformat it, "
+            "reindent it, or turn it into a list item."
+        )
+
     parts.append(f"Full current file content ({context.file_path}):\n```\n{context.full_text}\n```")
 
     return "\n\n".join(parts)
