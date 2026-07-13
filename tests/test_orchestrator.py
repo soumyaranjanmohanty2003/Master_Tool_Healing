@@ -2,6 +2,7 @@ import subprocess
 from pathlib import Path
 
 from autoheal.config import AutoHealConfig
+from autoheal.llm.groq_client import DiagnosisError
 from autoheal.models import Confidence, Diagnosis, FailureReport, FixType, RerunResult
 from autoheal.orchestrator import heal_one
 from autoheal.patch.differ import compute_diff
@@ -52,6 +53,21 @@ class FakeLLMClient:
     def diagnose(self, failure, context, previous_attempts=None):
         self.calls.append((failure, context, previous_attempts))
         return self._diagnoses.pop(0)
+
+
+class FlakyLLMClient:
+    """Yields a mix of exceptions and Diagnosis objects, in order."""
+
+    def __init__(self, results):
+        self._results = list(results)
+        self.calls = []
+
+    def diagnose(self, failure, context, previous_attempts=None):
+        self.calls.append((failure, context, previous_attempts))
+        result = self._results.pop(0)
+        if isinstance(result, Exception):
+            raise result
+        return result
 
 
 def fixed_diagnosis(original_text, fixed_text, file_path):
@@ -146,6 +162,47 @@ def test_gives_up_after_max_attempts_and_leaves_file_untouched(repo):
     assert result.healed is False
     assert len(result.attempts) == 3
     assert (repo / failure.file_path).read_text(encoding="utf-8") == original
+
+
+def test_retries_after_malformed_llm_response(repo):
+    """A bad/unparseable LLM response (invalid JSON, unknown fix_type, etc.)
+    should cost one attempt and retry, not abandon the whole run early -
+    matching every other per-attempt failure mode in the loop.
+    """
+    failure = make_failure()
+    original = (repo / failure.file_path).read_text(encoding="utf-8")
+    fixed = original.replace("Log In", "Sign In")
+
+    llm = FlakyLLMClient(
+        [
+            DiagnosisError("Invalid fix_type: 'config_section'"),
+            fixed_diagnosis(original, fixed, failure.file_path),
+        ]
+    )
+    adapter = FakeAdapter([RerunResult(passed=True, output="ok")])
+
+    config = base_config(repo)
+    config.max_attempts = 3
+    result = heal_one(config, adapter, llm, failure)
+
+    assert result.healed is True
+    assert len(llm.calls) == 2
+    assert (repo / failure.file_path).read_text(encoding="utf-8") == fixed
+
+
+def test_gives_up_after_max_attempts_of_malformed_llm_responses(repo):
+    failure = make_failure()
+
+    llm = FlakyLLMClient([DiagnosisError("Groq did not return valid JSON") for _ in range(3)])
+    adapter = FakeAdapter([])
+
+    config = base_config(repo)
+    config.max_attempts = 3
+    result = heal_one(config, adapter, llm, failure)
+
+    assert result.healed is False
+    assert len(llm.calls) == 3
+    assert "Groq did not return valid JSON" in result.summary
 
 
 def test_rejects_unsafe_patch_touching_other_file(repo):

@@ -39,6 +39,7 @@ def heal_one(
     failure: FailureReport,
 ) -> HealResult:
     result = HealResult(failure=failure)
+    last_diagnosis_error: str | None = None
 
     for attempt_num in range(1, config.max_attempts + 1):
         context = collect_source_context(config.repo_root, failure)
@@ -46,9 +47,9 @@ def heal_one(
         try:
             diagnosis = llm_client.diagnose(failure, context, list(result.attempts))
         except DiagnosisError as exc:
-            result.summary = f"LLM diagnosis failed: {exc}"
-            log.info("Attempt %d: %s", attempt_num, result.summary)
-            break
+            last_diagnosis_error = f"LLM diagnosis failed: {exc}"
+            log.info("Attempt %d: %s", attempt_num, last_diagnosis_error)
+            continue
 
         log.info(
             "Attempt %d: diagnosis fix_type=%s confidence=%s root_cause=%s",
@@ -96,7 +97,7 @@ def heal_one(
         revert_diff(config.repo_root, diagnosis.diff)
 
     if not result.summary:
-        result.summary = f"Could not heal after {len(result.attempts)} attempt(s)"
+        result.summary = last_diagnosis_error or f"Could not heal after {len(result.attempts)} attempt(s)"
     return result
 
 
