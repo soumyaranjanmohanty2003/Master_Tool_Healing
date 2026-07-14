@@ -135,6 +135,36 @@ def test_retries_then_heals(repo):
     assert llm.calls[1][2] == [result.attempts[0]]
 
 
+def test_retries_when_diagnosis_claims_a_fix_but_produces_no_diff(repo):
+    """fix_type != NO_FIX_POSSIBLE but diff is empty means the LLM claimed a
+    fix and failed to produce one (e.g. fixed_code identical to the original)
+    - that's malformed, not a confident "can't fix this", so it should cost
+    an attempt and retry rather than abandon the run early.
+    """
+    failure = make_failure()
+    original = (repo / failure.file_path).read_text(encoding="utf-8")
+    fixed = original.replace("Log In", "Sign In")
+
+    empty_diff_diagnosis = Diagnosis(
+        root_cause="confused reasoning",
+        confidence=Confidence.HIGH,
+        fix_type=FixType.ASSERTION_UPDATE,
+        explanation="",
+        diff=None,
+    )
+
+    llm = FakeLLMClient([empty_diff_diagnosis, fixed_diagnosis(original, fixed, failure.file_path)])
+    adapter = FakeAdapter([RerunResult(passed=True, output="ok")])
+
+    config = base_config(repo)
+    config.max_attempts = 3
+    result = heal_one(config, adapter, llm, failure)
+
+    assert result.healed is True
+    assert len(llm.calls) == 2
+    assert (repo / failure.file_path).read_text(encoding="utf-8") == fixed
+
+
 def test_gives_up_when_no_fix_possible(repo):
     failure = make_failure()
     llm = FakeLLMClient([no_fix_diagnosis()])

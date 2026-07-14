@@ -59,10 +59,20 @@ def heal_one(
         attempt = FixAttempt(attempt_number=attempt_num, diagnosis=diagnosis)
         result.attempts.append(attempt)
 
-        if diagnosis.fix_type == FixType.NO_FIX_POSSIBLE or not diagnosis.diff:
+        if diagnosis.fix_type == FixType.NO_FIX_POSSIBLE:
             result.summary = f"No fix attempted (attempt {attempt_num}): {diagnosis.root_cause}"
-            log.info("Attempt %d: no diff produced, stopping", attempt_num)
+            log.info("Attempt %d: LLM judged this not fixable, stopping", attempt_num)
             break
+
+        if not diagnosis.diff:
+            # fix_type wasn't NO_FIX_POSSIBLE, so the LLM claimed a fix but
+            # failed to actually produce one (e.g. fixed_code came back null
+            # or identical to the original) - malformed like a DiagnosisError,
+            # not a confident "can't fix this". Retry within the attempt budget
+            # rather than abandoning early.
+            last_diagnosis_error = f"Attempt {attempt_num}: fix_type={diagnosis.fix_type.value} but no diff was produced"
+            log.info(last_diagnosis_error)
+            continue
 
         try:
             check_diff_safety(diagnosis.diff, failure.file_path, config.max_changed_lines)
