@@ -12,6 +12,6 @@ test('user can sign in', async ({ page }) => {
     </html>
   `);
 
-  await page.click('text=Log In');
+  await page.click('text=Sign In');
   await expect(page.locator('#submit-btn')).toBeVisible();
 });
