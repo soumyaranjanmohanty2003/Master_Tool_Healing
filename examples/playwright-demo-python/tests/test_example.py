@@ -10,11 +10,11 @@ def test_user_can_sign_in(page: Page):
         """
         <html>
           <body>
-            <button id="submit-btn">Sign In</button>
+            <button id=\"submit-btn\">Sign In</button>
           </body>
         </html>
         """
     )
 
-    page.click("text=Log In")
+    page.click("text=Sign In")
     expect(page.locator("#submit-btn")).to_be_visible()
