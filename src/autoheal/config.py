@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_MAX_CHANGED_LINES = 200
 

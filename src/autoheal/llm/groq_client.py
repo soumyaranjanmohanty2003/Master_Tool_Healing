@@ -11,7 +11,7 @@ from autoheal.llm.schema import InvalidLLMResponse, validate_llm_response
 from autoheal.models import Diagnosis, FailureReport, FixAttempt, FixType, SourceContext
 from autoheal.patch.differ import compute_diff
 
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 DEFAULT_TEMPERATURE = 0.2
 
 

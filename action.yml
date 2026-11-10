@@ -22,7 +22,7 @@ inputs:
   groq-model:
     description: 'Groq model name.'
     required: false
-    default: 'llama-3.3-70b-versatile'
+    default: 'openai/gpt-oss-120b'
   github-token:
     description: 'Token with contents:write and pull-requests:write on this repo.'
     required: true
